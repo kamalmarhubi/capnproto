@@ -191,6 +191,7 @@ KJ_TEST("basic json decoding") {
     json.decodeRaw("null", root);
 
     KJ_EXPECT(root.which() == JsonValue::NULL_);
+    KJ_EXPECT(root.getNull() == VOID);
   }
 
   {
@@ -235,13 +236,28 @@ KJ_TEST("basic json decoding") {
 
     json.decodeRaw("[true]", root);
     KJ_EXPECT(root.which() == JsonValue::ARRAY);
-    KJ_EXPECT(root.getArray().size() == 1);
+    auto array = root.getArray();
+    KJ_EXPECT(array.size() == 1, array.size());
     KJ_EXPECT(root.getArray()[0].which() == JsonValue::BOOLEAN);
     KJ_EXPECT(root.getArray()[0].getBoolean() == true);
   }
 
-  //KJ_EXPECT(json.encode(true) == "true");
-  //KJ_EXPECT(json.encode(false) == "false");
+  {
+    MallocMessageBuilder message;
+    auto root = message.initRoot<JsonValue>();
+
+    json.decodeRaw("  [  true  , false\t\n , null]", root);
+    KJ_EXPECT(root.which() == JsonValue::ARRAY);
+    auto array = root.getArray();
+    KJ_EXPECT(array.size() == 3);
+    KJ_EXPECT(array[0].which() == JsonValue::BOOLEAN);
+    KJ_EXPECT(array[0].getBoolean() == true);
+    KJ_EXPECT(array[1].which() == JsonValue::BOOLEAN);
+    KJ_EXPECT(array[1].getBoolean() == false);
+    KJ_EXPECT(array[2].which() == JsonValue::NULL_);
+    KJ_EXPECT(array[2].getNull() == VOID);
+  }
+
   //KJ_EXPECT(json.encode(123) == "123");
   //KJ_EXPECT(json.encode(-5.5) == "-5.5");
   //KJ_EXPECT(json.encode(Text::Reader("foo")) == "\"foo\"");

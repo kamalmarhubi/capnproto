@@ -52,6 +52,8 @@ public:
   void parse(JsonValue::Builder &output) {
     KJ_REQUIRE(pos_ < input_.size(), "JSON message ends prematurely.");
 
+    consumeWhiteSpace();
+
     switch (nextChar()) {
       case 'n': consume(NULL_); output.setNull(); break;
       case 'f': consume(FALSE); output.setBoolean(false); break;
@@ -76,19 +78,45 @@ public:
     output.setString(kj::heapString(stringValue));
   }
 
+  void consumeWhiteSpace() {
+    consumeWhile([](char chr) {
+      return (
+        chr == ' '  ||
+        chr == '\f' ||
+        chr == '\n' ||
+        chr == '\r' ||
+        chr == '\t' ||
+        chr == '\v'
+      );
+    });
+  }
+
   void parseArray(JsonValue::Builder &output) {
     kj::Vector<Orphan<JsonValue>> values;
     auto orphanage = Orphanage::getForMessageContaining(output);
-    auto orphan = orphanage.newOrphan<JsonValue>();
 
+    // TODO(soon): this should be cleaned up
     consume('[');
-    if (nextChar() != ']') {
+    consumeWhiteSpace();
+    while (nextChar() != ']') {
+      auto orphan = orphanage.newOrphan<JsonValue>();
       auto builder = orphan.get();
-        parse(builder);
-        output.initArray(1);
-        output.getArray().adoptWithCaveats(0, kj::mv(orphan));
-    } else {
-      output.initArray(0);
+      parse(builder);
+      values.add(kj::mv(orphan));
+
+      consumeWhiteSpace();
+
+      if (nextChar() != ']') {
+        consume(',');
+        consumeWhiteSpace();
+      }
+    }
+
+    output.initArray(values.size());
+    auto array = output.getArray();
+
+    for (size_t i = 0; i < values.size(); ++i) {
+      array.adoptWithCaveats(i, kj::mv(values[i]));
     }
 
     consume(']');
@@ -106,7 +134,8 @@ public:
   }
 
   kj::ArrayPtr<const char> consume(char chr) {
-    KJ_REQUIRE(input_[pos_] == chr);
+    char current = input_[pos_];
+    KJ_REQUIRE(current == chr, current, chr);
 
     auto ret = input_.slice(pos_, pos_ + 1);
     ++pos_;
