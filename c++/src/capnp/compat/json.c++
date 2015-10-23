@@ -123,6 +123,7 @@ public:
   }
 
   void advance(size_t numBytes) {
+    KJ_REQUIRE(pos_ + numBytes < input_.size());
     pos_ += numBytes;
   }
 
