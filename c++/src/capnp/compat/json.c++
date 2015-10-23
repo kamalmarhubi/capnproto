@@ -21,8 +21,10 @@
 
 #include "json.h"
 #include <unordered_map>
+#include <capnp/orphan.h>
 #include <kj/debug.h>
 #include <kj/function.h>
+#include <kj/vector.h>
 
 namespace capnp {
 
@@ -55,6 +57,7 @@ public:
       case 'f': consume(FALSE); output.setBoolean(false); break;
       case 't': consume(TRUE); output.setBoolean(true); break;
       case '"': parseString(output); break;
+      case '[': parseArray(output); break;
     }
   }
 
@@ -71,6 +74,24 @@ public:
     consume('"');
 
     output.setString(kj::heapString(stringValue));
+  }
+
+  void parseArray(JsonValue::Builder &output) {
+    kj::Vector<Orphan<JsonValue>> values;
+    auto orphanage = Orphanage::getForMessageContaining(output);
+    auto orphan = orphanage.newOrphan<JsonValue>();
+
+    consume('[');
+    if (nextChar() != ']') {
+      auto builder = orphan.get();
+        parse(builder);
+        output.initArray(1);
+        output.getArray().adoptWithCaveats(0, kj::mv(orphan));
+    } else {
+      output.initArray(0);
+    }
+
+    consume(']');
   }
 
   void advance(size_t numBytes) {
