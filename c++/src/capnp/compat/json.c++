@@ -22,6 +22,7 @@
 #include "json.h"
 #include <unordered_map>
 #include <kj/debug.h>
+#include <kj/function.h>
 
 namespace capnp {
 
@@ -40,6 +41,90 @@ struct FieldHash {
 };
 
 }  // namespace
+
+namespace _ {  // private
+
+class Parser {
+public:
+  Parser(kj::ArrayPtr<const char> input) : input_(input), pos_(0) {}
+  void parse(JsonValue::Builder &output) {
+    KJ_REQUIRE(pos_ < input_.size(), "JSON message ends prematurely.");
+
+    switch (nextChar()) {
+      case 'n': consume(NULL_); output.setNull(); break;
+      case 'f': consume(FALSE); output.setBoolean(false); break;
+      case 't': consume(TRUE); output.setBoolean(true); break;
+      case '"': parseString(output); break;
+    }
+  }
+
+  char nextChar() {
+    return input_[pos_];
+  }
+
+  void parseString(JsonValue::Builder &output) {
+    consume('"');
+    // TODO(soon): handle escapes \u1234 \\ \n \" and so on
+    auto stringValue = consumeWhile([](const char chr) {
+      return chr != '"';
+    });
+    consume('"');
+
+    output.setString(kj::heapString(stringValue));
+  }
+
+  void advance(size_t numBytes) {
+    pos_ += numBytes;
+  }
+
+  kj::ArrayPtr<const char> consumeWhile(kj::Function<bool(char)> predicate) {
+    auto originalPos = pos_;
+    while (predicate(input_[pos_])) { ++pos_; }
+
+    return input_.slice(originalPos, pos_);
+  }
+
+  kj::ArrayPtr<const char> consume(char chr) {
+    KJ_REQUIRE(input_[pos_] == chr);
+
+    auto ret = input_.slice(pos_, pos_ + 1);
+    ++pos_;
+
+    return ret;
+  }
+
+  kj::ArrayPtr<const char> consume(kj::ArrayPtr<const char> str) {
+    // TODO(soon): check input has enough characters left
+    auto originalPos = pos_;
+
+    auto prefix = input_.slice(pos_, pos_ + str.size());
+    KJ_REQUIRE(prefix == str, kj::ArrayPtr<const char>("\"").size(), str, prefix,
+        "Something something invalid");  // TODO(soon): error message
+
+    advance(str.size());
+    return input_.slice(originalPos, originalPos + str.size());
+  }
+
+
+private:
+  kj::ArrayPtr<const char> input_;
+  size_t pos_;
+
+  static const kj::ArrayPtr<const char> NULL_;
+  static const kj::ArrayPtr<const char> FALSE;
+  static const kj::ArrayPtr<const char> TRUE;
+
+};
+
+
+const kj::ArrayPtr<const char> Parser::NULL_ = kj::ArrayPtr<const char>({'n','u','l','l'});
+const kj::ArrayPtr<const char> Parser::FALSE = kj::ArrayPtr<const char>({'f','a','l','s','e'});
+const kj::ArrayPtr<const char> Parser::TRUE = kj::ArrayPtr<const char>({'t','r','u','e'});
+
+
+
+
+}  // namespace _ (private)
 
 struct JsonCodec::Impl {
   bool prettyPrint = false;
@@ -212,7 +297,8 @@ kj::String JsonCodec::encodeRaw(JsonValue::Reader value) const {
 }
 
 void JsonCodec::decodeRaw(kj::ArrayPtr<const char> input, JsonValue::Builder output) const {
-  KJ_FAIL_ASSERT("JSON decode not implement yet. :(");
+  _::Parser parser(input);
+  parser.parse(output);
 }
 
 void JsonCodec::encode(DynamicValue::Reader input, Type type, JsonValue::Builder output) const {

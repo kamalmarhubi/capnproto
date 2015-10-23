@@ -21,7 +21,9 @@
 
 #include "json.h"
 #include <capnp/test-util.h>
+#include <capnp/compat/json.capnp.h>
 #include <kj/debug.h>
+#include <kj/string.h>
 #include <kj/test.h>
 
 namespace capnp {
@@ -179,6 +181,58 @@ KJ_TEST("encode union") {
 
   root.setBar(321);
   KJ_EXPECT(json.encode(root) == "{\"before\":\"a\",\"middle\":44,\"bar\":321,\"after\":\"c\"}");
+}
+
+KJ_TEST("basic json decoding") {
+  JsonCodec json;
+  {
+    MallocMessageBuilder message;
+    auto root = message.getRoot<JsonValue>();
+    json.decodeRaw("null", root);
+
+    KJ_EXPECT(root.which() == JsonValue::NULL_);
+  }
+
+  {
+    MallocMessageBuilder message;
+    auto root = message.getRoot<JsonValue>();
+
+    json.decodeRaw("false", root);
+    KJ_EXPECT(root.which() == JsonValue::BOOLEAN);
+    KJ_EXPECT(root.getBoolean() == false);
+  }
+
+  {
+    MallocMessageBuilder message;
+    auto root = message.getRoot<JsonValue>();
+
+    json.decodeRaw("true", root);
+    KJ_EXPECT(root.which() == JsonValue::BOOLEAN);
+    KJ_EXPECT(root.getBoolean() == true);
+  }
+
+  {
+    MallocMessageBuilder message;
+    auto root = message.getRoot<JsonValue>();
+
+    json.decodeRaw("\"foo\"", root);
+    KJ_EXPECT(root.which() == JsonValue::STRING);
+    KJ_EXPECT(kj::str("foo") == root.getString());
+  }
+
+  //KJ_EXPECT(json.encode(true) == "true");
+  //KJ_EXPECT(json.encode(false) == "false");
+  //KJ_EXPECT(json.encode(123) == "123");
+  //KJ_EXPECT(json.encode(-5.5) == "-5.5");
+  //KJ_EXPECT(json.encode(Text::Reader("foo")) == "\"foo\"");
+  //KJ_EXPECT(json.encode(Text::Reader("ab\"cd\\ef\x03")) == "\"ab\\\"cd\\\\ef\\u0003\"");
+  //KJ_EXPECT(json.encode(test::TestEnum::CORGE) == "\"corge\"");
+
+  //byte bytes[] = {12, 34, 56};
+  //KJ_EXPECT(json.encode(Data::Reader(bytes, 3)) == "[12,34,56]");
+
+  //json.setPrettyPrint(true);
+  //KJ_EXPECT(json.encode(Data::Reader(bytes, 3)) == "[12, 34, 56]");
 }
 
 class TestHandler: public JsonCodec::Handler<Text> {
