@@ -258,6 +258,16 @@ KJ_TEST("basic json decoding") {
     KJ_EXPECT(array[2].getNull() == VOID);
   }
 
+  {
+    MallocMessageBuilder message;
+    auto root = message.initRoot<JsonValue>();
+
+    json.decodeRaw("{}", root);
+    KJ_EXPECT(root.which() == JsonValue::OBJECT, root.which());
+    KJ_EXPECT(root.getObject().size() == 0);
+  }
+
+
   //KJ_EXPECT(json.encode(123) == "123");
   //KJ_EXPECT(json.encode(-5.5) == "-5.5");
   //KJ_EXPECT(json.encode(Text::Reader("foo")) == "\"foo\"");

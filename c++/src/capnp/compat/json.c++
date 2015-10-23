@@ -52,7 +52,7 @@ public:
   void parse(JsonValue::Builder &output) {
     KJ_REQUIRE(pos_ < input_.size(), "JSON message ends prematurely.");
 
-    consumeWhiteSpace();
+    consumeWhitespace();
 
     switch (nextChar()) {
       case 'n': consume(NULL_); output.setNull(); break;
@@ -60,11 +60,25 @@ public:
       case 't': consume(TRUE); output.setBoolean(true); break;
       case '"': parseString(output); break;
       case '[': parseArray(output); break;
+      case '{': parseObject(output); break;
     }
   }
 
   char nextChar() {
     return input_[pos_];
+  }
+
+  void consumeWithSurroundingWhitespace(char chr) {
+    consumeWhitespace();
+    consume(chr);
+    consumeWhitespace();
+  }
+
+  void parseObject(JsonValue::Builder &output) {
+    consumeWithSurroundingWhitespace('{');
+    consumeWithSurroundingWhitespace('}');
+
+    output.initObject(0);
   }
 
   void parseString(JsonValue::Builder &output) {
@@ -78,7 +92,7 @@ public:
     output.setString(kj::heapString(stringValue));
   }
 
-  void consumeWhiteSpace() {
+  void consumeWhitespace() {
     consumeWhile([](char chr) {
       return (
         chr == ' '  ||
@@ -97,18 +111,15 @@ public:
 
     // TODO(soon): this should be cleaned up
     consume('[');
-    consumeWhiteSpace();
-    while (nextChar() != ']') {
+    while (consumeWhitespace(), nextChar() != ']') {
       auto orphan = orphanage.newOrphan<JsonValue>();
       auto builder = orphan.get();
       parse(builder);
       values.add(kj::mv(orphan));
 
-      consumeWhiteSpace();
 
-      if (nextChar() != ']') {
+      if (consumeWhitespace(), nextChar() != ']') {
         consume(',');
-        consumeWhiteSpace();
       }
     }
 
@@ -149,8 +160,9 @@ public:
     auto originalPos = pos_;
 
     auto prefix = input_.slice(pos_, pos_ + str.size());
-    KJ_REQUIRE(prefix == str, kj::ArrayPtr<const char>("\"").size(), str, prefix,
-        "Something something invalid");  // TODO(soon): error message
+
+    // TODO(soon): error message
+    KJ_REQUIRE(prefix == str, "Unexpected input in JSON message.", prefix, str);
 
     advance(str.size());
     return input_.slice(originalPos, originalPos + str.size());
@@ -171,9 +183,6 @@ private:
 const kj::ArrayPtr<const char> Parser::NULL_ = kj::ArrayPtr<const char>({'n','u','l','l'});
 const kj::ArrayPtr<const char> Parser::FALSE = kj::ArrayPtr<const char>({'f','a','l','s','e'});
 const kj::ArrayPtr<const char> Parser::TRUE = kj::ArrayPtr<const char>({'t','r','u','e'});
-
-
-
 
 }  // namespace _ (private)
 
