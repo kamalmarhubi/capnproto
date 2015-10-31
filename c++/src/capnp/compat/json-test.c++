@@ -267,6 +267,44 @@ KJ_TEST("basic json decoding") {
     KJ_EXPECT(root.getObject().size() == 0);
   }
 
+  {
+    MallocMessageBuilder message;
+    auto root = message.initRoot<JsonValue>();
+
+    json.decodeRaw(R"({"some": null})", root);
+    KJ_EXPECT(root.which() == JsonValue::OBJECT, root.which());
+    auto object = root.getObject();
+    KJ_EXPECT(object.size() == 1);
+    KJ_EXPECT(kj::str("some") == object[0].getName());
+    KJ_EXPECT(object[0].getValue().which() == JsonValue::NULL_);
+  }
+
+  {
+    MallocMessageBuilder message;
+    auto root = message.initRoot<JsonValue>();
+
+    json.decodeRaw(R"({"foo": "a val", "bar": ["a", false,  { "z": {}}]})", root);
+    KJ_EXPECT(root.which() == JsonValue::OBJECT, root.which());
+    auto object = root.getObject();
+    KJ_EXPECT(object.size() == 2);
+    KJ_EXPECT(kj::str("foo") == object[0].getName());
+    KJ_EXPECT(object[0].getValue().which() == JsonValue::STRING);
+    KJ_EXPECT(kj::str("a val") == object[0].getValue().getString());
+
+    KJ_EXPECT(kj::str("bar") == object[1].getName());
+    KJ_EXPECT(object[1].getValue().which() == JsonValue::ARRAY);
+    auto array = object[1].getValue().getArray();
+    KJ_EXPECT(array.size() == 3, array.size());
+    KJ_EXPECT(array[0].which() == JsonValue::STRING);
+    KJ_EXPECT(kj::str("a") == array[0].getString());
+    KJ_EXPECT(array[1].which() == JsonValue::BOOLEAN);
+    KJ_EXPECT(array[1].getBoolean() == false);
+    KJ_EXPECT(array[2].which() == JsonValue::OBJECT);
+    KJ_EXPECT(array[2].getObject().size() == 1);
+    KJ_EXPECT(array[2].getObject()[0].getValue().which() == JsonValue::OBJECT);
+    KJ_EXPECT(array[2].getObject()[0].getValue().getObject().size() == 0);
+  }
+
 
   //KJ_EXPECT(json.encode(123) == "123");
   //KJ_EXPECT(json.encode(-5.5) == "-5.5");

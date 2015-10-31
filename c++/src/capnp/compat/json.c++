@@ -75,10 +75,45 @@ public:
   }
 
   void parseObject(JsonValue::Builder &output) {
-    consumeWithSurroundingWhitespace('{');
-    consumeWithSurroundingWhitespace('}');
+    kj::Vector<Orphan<JsonValue::Field>> fields;
+    auto orphanage = Orphanage::getForMessageContaining(output);
 
-    output.initObject(0);
+    consumeWithSurroundingWhitespace('{');
+    while (consumeWhitespace(), nextChar() != '}') {
+      auto orphan = orphanage.newOrphan<JsonValue::Field>();
+      auto builder = orphan.get();
+
+      builder.setName(readQuotedString());
+      consumeWithSurroundingWhitespace(':');
+      auto valueBuilder = builder.getValue();
+      parse(valueBuilder);
+
+      fields.add(kj::mv(orphan));
+
+      if (consumeWhitespace(), nextChar() != '}') {
+        consume(',');
+      }
+    }
+
+    output.initObject(fields.size());
+    auto object = output.getObject();
+
+    for (size_t i = 0; i < fields.size(); ++i) {
+      object.adoptWithCaveats(i, kj::mv(fields[i]));
+    }
+
+    consumeWithSurroundingWhitespace('}');
+  }
+
+  kj::String readQuotedString() {
+    consume('"');
+    // TODO(soon): handle escapes \u1234 \\ \n \" and so on
+    auto stringValue = consumeWhile([](const char chr) {
+      return chr != '"';
+    });
+    consume('"');
+
+    return kj::heapString(stringValue);
   }
 
   void parseString(JsonValue::Builder &output) {
