@@ -20,7 +20,7 @@
 // THE SOFTWARE.
 
 #include "json.h"
-#include <cstdlib>
+#include <cstdlib>  // std::strtod
 #include <unordered_map>
 #include <capnp/orphan.h>
 #include <kj/debug.h>
@@ -70,7 +70,6 @@ public:
   void advanceTo(size_t newPos) {
     KJ_REQUIRE(newPos < input_.size());
     pos_ = newPos;
-
   }
 
   void parseNumber(JsonValue::Builder &output) {
