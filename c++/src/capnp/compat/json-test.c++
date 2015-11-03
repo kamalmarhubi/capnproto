@@ -314,6 +314,25 @@ KJ_TEST("basic json decoding") {
     KJ_EXPECT(root.getNumber() == 123);
   }
 
+  {
+    MallocMessageBuilder message;
+    auto root = message.initRoot<JsonValue>();
+
+    json.decodeRaw("-5", root);
+    KJ_EXPECT(root.which() == JsonValue::NUMBER);
+    KJ_EXPECT(root.getNumber() == -5);
+  }
+
+  //{
+  //  MallocMessageBuilder message;
+  //  auto root = message.initRoot<JsonValue>();
+
+  //  json.decodeRaw("-5.5", root);
+  //  KJ_EXPECT(root.which() == JsonValue::NUMBER);
+  //  KJ_EXPECT(root.getNumber() == -5.5);
+  //}
+
+
 
   //KJ_EXPECT(json.encode(-5.5) == "-5.5");
   //KJ_EXPECT(json.encode(Text::Reader("foo")) == "\"foo\"");

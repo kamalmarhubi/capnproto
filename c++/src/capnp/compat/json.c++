@@ -62,6 +62,8 @@ public:
       case '"': parseString(output); break;
       case '[': parseArray(output); break;
       case '{': parseObject(output); break;
+      case '-':
+      case '+':
       case '0':
       case '1':
       case '2':
@@ -72,12 +74,12 @@ public:
       case '7':
       case '8':
       case '9': parseNumber(output); break;
-
     }
   }
 
   void parseNumber(JsonValue::Builder &output) {
     auto numStr = consumeNumber();
+    // TODO: decide if using <string> is acceptable
     std::string numStdString(numStr.begin(), numStr.size());
 
     output.setNumber(stod(numStdString));
@@ -145,9 +147,23 @@ public:
 
     output.setString(kj::heapString(stringValue));
   }
+
+  bool maybeConsume(char chr) {
+    if (nextChar() == chr) {
+      consume(chr);
+      return true;
+    } else {
+      return false;
+    }
+  }
   
   kj::ArrayPtr<const char> consumeNumber() {
-    return consumeWhile([](char chr) {
+    // TODO(soon): this is a mess; see what jq's parser does for numbers
+    auto origPos = pos_;
+    bool hasSign = nextChar() == '+' || nextChar() == '-';
+    if (hasSign) { advance(1); }
+
+    auto numPart = consumeWhile([](char chr) {
       return (
         chr == '0' ||
         chr == '1' ||
@@ -161,6 +177,12 @@ public:
         chr == '9'
       );
     });
+
+    if (hasSign) {
+      numPart = kj::ArrayPtr<const char>(input_.begin() + origPos, numPart.end());
+    }
+
+    return numPart;
   }
 
   void consumeWhitespace() {
