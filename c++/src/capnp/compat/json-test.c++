@@ -283,7 +283,7 @@ KJ_TEST("basic json decoding") {
     MallocMessageBuilder message;
     auto root = message.initRoot<JsonValue>();
 
-    json.decodeRaw(R"({"foo": "a val", "bar": ["a", false,  { "z": {}}]})", root);
+    json.decodeRaw(R"({"foo": "a val", "bar": ["a", -5.5e11,  { "z": {}}]})", root);
     KJ_EXPECT(root.which() == JsonValue::OBJECT, root.which());
     auto object = root.getObject();
     KJ_EXPECT(object.size() == 2);
@@ -297,8 +297,8 @@ KJ_TEST("basic json decoding") {
     KJ_EXPECT(array.size() == 3, array.size());
     KJ_EXPECT(array[0].which() == JsonValue::STRING);
     KJ_EXPECT(kj::str("a") == array[0].getString());
-    KJ_EXPECT(array[1].which() == JsonValue::BOOLEAN);
-    KJ_EXPECT(array[1].getBoolean() == false);
+    KJ_EXPECT(array[1].which() == JsonValue::NUMBER);
+    KJ_EXPECT(array[1].getNumber() == -5.5e11);
     KJ_EXPECT(array[2].which() == JsonValue::OBJECT);
     KJ_EXPECT(array[2].getObject().size() == 1);
     KJ_EXPECT(array[2].getObject()[0].getValue().which() == JsonValue::OBJECT);
@@ -318,6 +318,7 @@ KJ_TEST("basic json decoding") {
     MallocMessageBuilder message;
     auto root = message.initRoot<JsonValue>();
 
+    // TODO(soon): this should fail, JSON doesn't allow leading +
     json.decodeRaw("+123", root);
     KJ_EXPECT(root.which() == JsonValue::NUMBER);
     KJ_EXPECT(root.getNumber() == 123);

@@ -20,7 +20,7 @@
 // THE SOFTWARE.
 
 #include "json.h"
-#include <string>
+#include <cstdlib>
 #include <unordered_map>
 #include <capnp/orphan.h>
 #include <kj/debug.h>
@@ -62,27 +62,24 @@ public:
       case '"': parseString(output); break;
       case '[': parseArray(output); break;
       case '{': parseObject(output); break;
-      case '-':
-      case '+':
-      case '0':
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
-      case '6':
-      case '7':
-      case '8':
-      case '9': parseNumber(output); break;
+      // TODO(soon): are there other possible leading characters?
+      default: parseNumber(output); break;
     }
   }
 
-  void parseNumber(JsonValue::Builder &output) {
-    auto numStr = consumeNumber();
-    // TODO: decide if using <string> is acceptable
-    std::string numStdString(numStr.begin(), numStr.size());
+  void advanceTo(size_t newPos) {
+    KJ_REQUIRE(newPos < input_.size());
+    pos_ = newPos;
 
-    output.setNumber(stod(numStdString));
+  }
+
+  void parseNumber(JsonValue::Builder &output) {
+    // TODO(soon): strtod is more liberal than JSON grammar, eg allows leading +
+    // strtod consumes leading whitespace, so we don't have to.
+    char *numEnd;
+    output.setNumber(std::strtod(input_.begin() + pos_, &numEnd));
+
+    advanceTo(numEnd - input_.begin());
   }
 
   char nextChar() {
