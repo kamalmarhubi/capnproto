@@ -332,14 +332,14 @@ KJ_TEST("basic json decoding") {
     KJ_EXPECT(root.getNumber() == -5);
   }
 
-  //{
-  //  MallocMessageBuilder message;
-  //  auto root = message.initRoot<JsonValue>();
+  {
+    MallocMessageBuilder message;
+    auto root = message.initRoot<JsonValue>();
 
-  //  json.decodeRaw("-5.5", root);
-  //  KJ_EXPECT(root.which() == JsonValue::NUMBER);
-  //  KJ_EXPECT(root.getNumber() == -5.5);
-  //}
+    json.decodeRaw("-5.5", root);
+    KJ_EXPECT(root.which() == JsonValue::NUMBER);
+    KJ_EXPECT(root.getNumber() == -5.5);
+  }
 
 
 
