@@ -20,6 +20,7 @@
 // THE SOFTWARE.
 
 #include "json.h"
+#include <string>
 #include <unordered_map>
 #include <capnp/orphan.h>
 #include <kj/debug.h>
@@ -61,7 +62,25 @@ public:
       case '"': parseString(output); break;
       case '[': parseArray(output); break;
       case '{': parseObject(output); break;
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9': parseNumber(output); break;
+
     }
+  }
+
+  void parseNumber(JsonValue::Builder &output) {
+    auto numStr = consumeNumber();
+    std::string numStdString(numStr.begin(), numStr.size());
+
+    output.setNumber(stod(numStdString));
   }
 
   char nextChar() {
@@ -125,6 +144,23 @@ public:
     consume('"');
 
     output.setString(kj::heapString(stringValue));
+  }
+  
+  kj::ArrayPtr<const char> consumeNumber() {
+    return consumeWhile([](char chr) {
+      return (
+        chr == '0' ||
+        chr == '1' ||
+        chr == '2' ||
+        chr == '3' ||
+        chr == '4' ||
+        chr == '5' ||
+        chr == '6' ||
+        chr == '7' ||
+        chr == '8' ||
+        chr == '9'
+      );
+    });
   }
 
   void consumeWhitespace() {
