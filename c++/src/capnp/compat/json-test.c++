@@ -318,6 +318,15 @@ KJ_TEST("basic json decoding") {
     MallocMessageBuilder message;
     auto root = message.initRoot<JsonValue>();
 
+    json.decodeRaw("+123", root);
+    KJ_EXPECT(root.which() == JsonValue::NUMBER);
+    KJ_EXPECT(root.getNumber() == 123);
+  }
+
+  {
+    MallocMessageBuilder message;
+    auto root = message.initRoot<JsonValue>();
+
     json.decodeRaw("-5", root);
     KJ_EXPECT(root.which() == JsonValue::NUMBER);
     KJ_EXPECT(root.getNumber() == -5);
