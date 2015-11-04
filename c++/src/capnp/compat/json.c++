@@ -146,7 +146,11 @@ public:
           case 'n' : decoded.add('\n'); advance(1); break;
           case 'r' : decoded.add('\r'); advance(1); break;
           case 't' : decoded.add('\t'); advance(1); break;
-          case 'u' : KJ_FAIL_REQUIRE("unicode escapes are not supported (yet!)");
+          case 'u' :
+            advance(1);  // consume 'u'
+            unescapeAndAppend(kj::arrayPtr(input_.begin() + pos_, 4), decoded);
+            advance(4);
+            break;
           default: KJ_FAIL_REQUIRE("invalid escape", nextChar()); break;
         }
       }
@@ -158,6 +162,30 @@ public:
 
     // TODO(perf): this copy can be eliminated, but I can't find the kj::wayToDoIt();
     return kj::String(decoded.releaseAsArray());
+  }
+
+  // TODO(soon): this "interface" is ugly
+  void unescapeAndAppend(kj::ArrayPtr<const char> hex, kj::Vector<char>& target) {
+    KJ_REQUIRE(hex.size() == 4);
+    int codePoint = 0;
+
+    for (int i = 0; i < 4; ++i) {
+      char c = hex[i];
+      codePoint <<= 4;
+
+      if ('0' <= c && c <= '9') {
+        codePoint |= c - '0';
+      } else if ('a' <= c && c <= 'f') {
+        codePoint |= c - 'a';
+      } else if ('A' <= c && c <= 'F') {
+        codePoint |= c - 'A';
+      } else {
+        KJ_FAIL_REQUIRE("invalid hex digit in unicode escape", c);
+      }
+    }
+
+    KJ_REQUIRE(codePoint < 128, "non-ASCII unicode escapes are not supported (yet!)");
+    target.add(0x7f & static_cast<char>(codePoint));
   }
 
   void parseString(JsonValue::Builder &output) {

@@ -243,11 +243,10 @@ KJ_TEST("basic json decoding") {
     MallocMessageBuilder message;
     auto root = message.initRoot<JsonValue>();
 
-    json.decodeRaw(R"("\"\\\/\b\f\n\r\t")", root);
+    json.decodeRaw(R"("\"\\\/\b\f\n\r\t\u0003abc\u0064\u0065f")", root);
     KJ_EXPECT(root.which() == JsonValue::STRING);
-    KJ_EXPECT(kj::str("\"\\/\b\f\n\r\t") == root.getString());
+    KJ_EXPECT(kj::str("\"\\/\b\f\n\r\t\x03""abcdef") == root.getString(), root.getString());
   }
-
   {
     MallocMessageBuilder message;
     auto root = message.initRoot<JsonValue>();
