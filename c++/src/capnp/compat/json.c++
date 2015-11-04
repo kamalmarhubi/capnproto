@@ -136,9 +136,8 @@ public:
   void parseString(JsonValue::Builder &output) {
     consume('"');
     // TODO(perf): avoid copy / alloc if no escapes encoutered.
-    // TODO(perf): get statistics on string size and preallocate.
+    // TODO(perf): get statistics on string size and preallocate?
     kj::Vector<char> decoded;
-    // TODO(soon): handle escapes \u1234 \\ \n \" and so on
 
     do {
       auto stringValue = consumeWhile([](const char chr) {
@@ -147,21 +146,28 @@ public:
 
       decoded.addAll(stringValue);
 
-      if (nextChar() == '\\') {
+      if (nextChar() == '\\') {  // handle escapes.
         advance(1);
         switch(nextChar()) {
+          case '"' : decoded.add('"' ); advance(1); break;
           case '\\': decoded.add('\\'); advance(1); break;
-          case '"': decoded.add('"'); advance(1); break;
-          default: KJ_FAIL_REQUIRE("invalid unicode escape", nextChar()); break;
+          case '/' : decoded.add('/' ); advance(1); break;
+          case 'b' : decoded.add('\b'); advance(1); break;
+          case 'f' : decoded.add('\f'); advance(1); break;
+          case 'n' : decoded.add('\n'); advance(1); break;
+          case 'r' : decoded.add('\r'); advance(1); break;
+          case 't' : decoded.add('\t'); advance(1); break;
+          case 'u' : KJ_FAIL_REQUIRE("unicode escapes are not supported (yet!)");
+          default: KJ_FAIL_REQUIRE("invalid escape", nextChar()); break;
         }
       }
 
     } while(nextChar() != '"');
 
-
     consume('"');
     decoded.add('\0');
 
+    // TODO(perf): this copy can be eliminated, but I can't find the kj::wayToDoIt();
     output.setString(kj::String(decoded.releaseAsArray()));
   }
 
