@@ -135,13 +135,34 @@ public:
 
   void parseString(JsonValue::Builder &output) {
     consume('"');
+    // TODO(perf): avoid copy / alloc if no escapes encoutered.
+    // TODO(perf): get statistics on string size and preallocate.
+    kj::Vector<char> decoded;
     // TODO(soon): handle escapes \u1234 \\ \n \" and so on
-    auto stringValue = consumeWhile([](const char chr) {
-      return chr != '"';
-    });
-    consume('"');
 
-    output.setString(kj::heapString(stringValue));
+    do {
+      auto stringValue = consumeWhile([](const char chr) {
+          return chr != '"' && chr != '\\';
+      });
+
+      decoded.addAll(stringValue);
+
+      if (nextChar() == '\\') {
+        advance(1);
+        switch(nextChar()) {
+          case '\\': decoded.add('\\'); advance(1); break;
+          case '"': decoded.add('"'); advance(1); break;
+          default: KJ_FAIL_REQUIRE("invalid unicode escape", nextChar()); break;
+        }
+      }
+
+    } while(nextChar() != '"');
+
+
+    consume('"');
+    decoded.add('\0');
+
+    output.setString(kj::String(decoded.releaseAsArray()));
   }
 
   bool maybeConsume(char chr) {
