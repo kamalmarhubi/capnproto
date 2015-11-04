@@ -242,24 +242,24 @@ public:
     consume(']');
   }
 
-  void advance(size_t numBytes) {
+  void advance(size_t numBytes = 1) {
     KJ_REQUIRE(pos_ + numBytes < input_.size());
     pos_ += numBytes;
   }
 
   kj::ArrayPtr<const char> consumeWhile(kj::Function<bool(char)> predicate) {
     auto originalPos = pos_;
-    while (predicate(input_[pos_])) { ++pos_; }
+    while (predicate(nextChar())) { advance(); }
 
     return input_.slice(originalPos, pos_);
   }
 
   kj::ArrayPtr<const char> consume(char chr) {
-    char current = input_[pos_];
+    char current = nextChar();
     KJ_REQUIRE(current == chr, current, chr);
 
     auto ret = input_.slice(pos_, pos_ + 1);
-    ++pos_;
+    advance();
 
     return ret;
   }
