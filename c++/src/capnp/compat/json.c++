@@ -50,7 +50,7 @@ namespace _ {  // private
 class Parser {
 public:
   Parser(kj::ArrayPtr<const char> input) : input_(input), pos_(0) {}
-  void parse(JsonValue::Builder &output) {
+  void parseValue(JsonValue::Builder &output) {
     KJ_REQUIRE(pos_ < input_.size(), "JSON message ends prematurely.");
 
     consumeWhitespace();
@@ -103,7 +103,7 @@ public:
       builder.setName(consumeQuotedString());
       consumeWithSurroundingWhitespace(':');
       auto valueBuilder = builder.getValue();
-      parse(valueBuilder);
+      parseValue(valueBuilder);
 
       fields.add(kj::mv(orphan));
 
@@ -276,7 +276,7 @@ public:
     while (consumeWhitespace(), nextChar() != ']') {
       auto orphan = orphanage.newOrphan<JsonValue>();
       auto builder = orphan.get();
-      parse(builder);
+      parseValue(builder);
       values.add(kj::mv(orphan));
 
 
@@ -520,7 +520,7 @@ kj::String JsonCodec::encodeRaw(JsonValue::Reader value) const {
 
 void JsonCodec::decodeRaw(kj::ArrayPtr<const char> input, JsonValue::Builder output) const {
   _::Parser parser(input);
-  parser.parse(output);
+  parser.parseValue(output);
 }
 
 void JsonCodec::encode(DynamicValue::Reader input, Type type, JsonValue::Builder output) const {
