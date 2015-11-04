@@ -310,11 +310,11 @@ KJ_TEST("basic json decoding") {
     MallocMessageBuilder message;
     auto root = message.initRoot<JsonValue>();
 
-    json.decodeRaw(R"({"foo": "a val", "bar": ["a", -5.5e11,  { "z": {}}]})", root);
+    json.decodeRaw(R"({"foo\n\tbaz": "a val", "bar": ["a", -5.5e11,  { "z": {}}]})", root);
     KJ_EXPECT(root.which() == JsonValue::OBJECT, root.which());
     auto object = root.getObject();
     KJ_EXPECT(object.size() == 2);
-    KJ_EXPECT(kj::str("foo") == object[0].getName());
+    KJ_EXPECT(kj::str("foo\n\tbaz") == object[0].getName());
     KJ_EXPECT(object[0].getValue().which() == JsonValue::STRING);
     KJ_EXPECT(kj::str("a val") == object[0].getValue().getString());
 

@@ -100,7 +100,7 @@ public:
       auto orphan = orphanage.newOrphan<JsonValue::Field>();
       auto builder = orphan.get();
 
-      builder.setName(readQuotedString());
+      builder.setName(consumeQuotedString());
       consumeWithSurroundingWhitespace(':');
       auto valueBuilder = builder.getValue();
       parse(valueBuilder);
@@ -122,18 +122,7 @@ public:
     consumeWithSurroundingWhitespace('}');
   }
 
-  kj::String readQuotedString() {
-    consume('"');
-    // TODO(soon): handle escapes \u1234 \\ \n \" and so on
-    auto stringValue = consumeWhile([](const char chr) {
-      return chr != '"';
-    });
-    consume('"');
-
-    return kj::heapString(stringValue);
-  }
-
-  void parseString(JsonValue::Builder &output) {
+  kj::String consumeQuotedString() {
     consume('"');
     // TODO(perf): avoid copy / alloc if no escapes encoutered.
     // TODO(perf): get statistics on string size and preallocate?
@@ -168,7 +157,11 @@ public:
     decoded.add('\0');
 
     // TODO(perf): this copy can be eliminated, but I can't find the kj::wayToDoIt();
-    output.setString(kj::String(decoded.releaseAsArray()));
+    return kj::String(decoded.releaseAsArray());
+  }
+
+  void parseString(JsonValue::Builder &output) {
+    output.setString(consumeQuotedString());
   }
 
   bool maybeConsume(char chr) {
