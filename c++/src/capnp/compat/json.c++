@@ -201,59 +201,6 @@ public:
     }
   }
   
-  kj::ArrayPtr<const char> consumeNumber() {
-    // TODO(soon): this is a mess; see what jq's parser does for numbers
-    auto origPos = pos_;
-    bool hasSign = nextChar() == '+' || nextChar() == '-';
-    if (hasSign) { advance(1); }
-
-    auto integralPart = consumeWhile([](char chr) {
-      return (
-        chr == '0' ||
-        chr == '1' ||
-        chr == '2' ||
-        chr == '3' ||
-        chr == '4' ||
-        chr == '5' ||
-        chr == '6' ||
-        chr == '7' ||
-        chr == '8' ||
-        chr == '9'
-      );
-    });
-
-    bool hasPoint = maybeConsume('.');
-    kj::ArrayPtr<const char> fracPart;
-    if (hasPoint) {
-      fracPart = consumeWhile([](char chr) {
-          return (
-              chr == '0' ||
-              chr == '1' ||
-              chr == '2' ||
-              chr == '3' ||
-              chr == '4' ||
-              chr == '5' ||
-              chr == '6' ||
-              chr == '7' ||
-              chr == '8' ||
-              chr == '9'
-              );
-          });
-    }
-
-    auto numPart = integralPart;
-
-    if (hasSign) {
-      numPart = kj::ArrayPtr<const char>(input_.begin() + origPos, numPart.end());
-    }
-
-    if (hasPoint) {
-      numPart = kj::ArrayPtr<const char>(numPart.begin(), fracPart.end());
-    }
-
-    return numPart;
-  }
-
   void consumeWhitespace() {
     consumeWhile([](char chr) {
       return (
