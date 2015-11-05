@@ -405,11 +405,6 @@ public:
     }
   }
 
-  void advanceTo(size_t newPos) {
-    KJ_REQUIRE(newPos < input_.size());
-    pos_ = newPos;
-  }
-
   void parseNumber(JsonValue::Builder &output) {
     // TODO(soon): strtod is more liberal than JSON grammar, eg allows leading +
     // strtod consumes leading whitespace, so we don't have to.
@@ -419,14 +414,35 @@ public:
     advanceTo(numEnd - input_.begin());
   }
 
-  char nextChar() {
-    return input_[pos_];
+  void parseString(JsonValue::Builder &output) {
+    output.setString(consumeQuotedString());
   }
 
-  void consumeWithSurroundingWhitespace(char chr) {
-    consumeWhitespace();
-    consume(chr);
-    consumeWhitespace();
+  void parseArray(JsonValue::Builder &output) {
+    kj::Vector<Orphan<JsonValue>> values;
+    auto orphanage = Orphanage::getForMessageContaining(output);
+
+    // TODO(soon): this should be cleaned up
+    consume('[');
+    while (consumeWhitespace(), nextChar() != ']') {
+      auto orphan = orphanage.newOrphan<JsonValue>();
+      auto builder = orphan.get();
+      parseValue(builder);
+      values.add(kj::mv(orphan));
+
+      if (consumeWhitespace(), nextChar() != ']') {
+        consume(',');
+      }
+    }
+
+    output.initArray(values.size());
+    auto array = output.getArray();
+
+    for (size_t i = 0; i < values.size(); ++i) {
+      array.adoptWithCaveats(i, kj::mv(values[i]));
+    }
+
+    consume(']');
   }
 
   void parseObject(JsonValue::Builder &output) {
@@ -458,6 +474,69 @@ public:
     }
 
     consumeWithSurroundingWhitespace('}');
+  }
+
+  char nextChar() {
+    return input_[pos_];
+  }
+
+  void advance(size_t numBytes = 1) {
+    KJ_REQUIRE(pos_ + numBytes < input_.size());
+    pos_ += numBytes;
+  }
+
+  void advanceTo(size_t newPos) {
+    KJ_REQUIRE(newPos < input_.size());
+    pos_ = newPos;
+  }
+
+  kj::ArrayPtr<const char> consume(char chr) {
+    char current = nextChar();
+    KJ_REQUIRE(current == chr, current, chr);
+
+    auto ret = input_.slice(pos_, pos_ + 1);
+    advance();
+
+    return ret;
+  }
+
+  kj::ArrayPtr<const char> consume(kj::ArrayPtr<const char> str) {
+    // TODO(soon): check input has enough characters left
+    auto originalPos = pos_;
+
+    auto prefix = input_.slice(pos_, pos_ + str.size());
+
+    // TODO(soon): error message
+    KJ_REQUIRE(prefix == str, "Unexpected input in JSON message.", prefix, str);
+
+    advance(str.size());
+    return input_.slice(originalPos, originalPos + str.size());
+  }
+
+  kj::ArrayPtr<const char> consumeWhile(kj::Function<bool(char)> predicate) {
+    auto originalPos = pos_;
+    while (predicate(nextChar())) { advance(); }
+
+    return input_.slice(originalPos, pos_);
+  }
+  
+  void consumeWhitespace() {
+    consumeWhile([](char chr) {
+      return (
+        chr == ' '  ||
+        chr == '\f' ||
+        chr == '\n' ||
+        chr == '\r' ||
+        chr == '\t' ||
+        chr == '\v'
+      );
+    });
+  }
+
+  void consumeWithSurroundingWhitespace(char chr) {
+    consumeWhitespace();
+    consume(chr);
+    consumeWhitespace();
   }
 
   kj::String consumeQuotedString() {
@@ -502,7 +581,7 @@ public:
     return kj::String(decoded.releaseAsArray());
   }
 
-  // TODO(soon): this "interface" is ugly
+  // TODO(soon): this "interface" is ugly, and won't work if/when surrogates are handled.
   void unescapeAndAppend(kj::ArrayPtr<const char> hex, kj::Vector<char>& target) {
     KJ_REQUIRE(hex.size() == 4);
     int codePoint = 0;
@@ -526,107 +605,17 @@ public:
     target.add(0x7f & static_cast<char>(codePoint));
   }
 
-  void parseString(JsonValue::Builder &output) {
-    output.setString(consumeQuotedString());
-  }
-
-  bool maybeConsume(char chr) {
-    if (nextChar() == chr) {
-      consume(chr);
-      return true;
-    } else {
-      return false;
-    }
-  }
-  
-  void consumeWhitespace() {
-    consumeWhile([](char chr) {
-      return (
-        chr == ' '  ||
-        chr == '\f' ||
-        chr == '\n' ||
-        chr == '\r' ||
-        chr == '\t' ||
-        chr == '\v'
-      );
-    });
-  }
-
-  void parseArray(JsonValue::Builder &output) {
-    kj::Vector<Orphan<JsonValue>> values;
-    auto orphanage = Orphanage::getForMessageContaining(output);
-
-    // TODO(soon): this should be cleaned up
-    consume('[');
-    while (consumeWhitespace(), nextChar() != ']') {
-      auto orphan = orphanage.newOrphan<JsonValue>();
-      auto builder = orphan.get();
-      parseValue(builder);
-      values.add(kj::mv(orphan));
-
-
-      if (consumeWhitespace(), nextChar() != ']') {
-        consume(',');
-      }
-    }
-
-    output.initArray(values.size());
-    auto array = output.getArray();
-
-    for (size_t i = 0; i < values.size(); ++i) {
-      array.adoptWithCaveats(i, kj::mv(values[i]));
-    }
-
-    consume(']');
-  }
-
-  void advance(size_t numBytes = 1) {
-    KJ_REQUIRE(pos_ + numBytes < input_.size());
-    pos_ += numBytes;
-  }
-
-  kj::ArrayPtr<const char> consumeWhile(kj::Function<bool(char)> predicate) {
-    auto originalPos = pos_;
-    while (predicate(nextChar())) { advance(); }
-
-    return input_.slice(originalPos, pos_);
-  }
-
-  kj::ArrayPtr<const char> consume(char chr) {
-    char current = nextChar();
-    KJ_REQUIRE(current == chr, current, chr);
-
-    auto ret = input_.slice(pos_, pos_ + 1);
-    advance();
-
-    return ret;
-  }
-
-  kj::ArrayPtr<const char> consume(kj::ArrayPtr<const char> str) {
-    // TODO(soon): check input has enough characters left
-    auto originalPos = pos_;
-
-    auto prefix = input_.slice(pos_, pos_ + str.size());
-
-    // TODO(soon): error message
-    KJ_REQUIRE(prefix == str, "Unexpected input in JSON message.", prefix, str);
-
-    advance(str.size());
-    return input_.slice(originalPos, originalPos + str.size());
-  }
-
-
 private:
-  kj::ArrayPtr<const char> input_;
-  size_t pos_;
-
   static const kj::ArrayPtr<const char> NULL_;
   static const kj::ArrayPtr<const char> FALSE;
   static const kj::ArrayPtr<const char> TRUE;
 
-};
+  kj::ArrayPtr<const char> input_;
+  size_t pos_;
 
+};  // class Parser
 
+// Array literal needed to avoid null terminator.
 const kj::ArrayPtr<const char> Parser::NULL_ = kj::ArrayPtr<const char>({'n','u','l','l'});
 const kj::ArrayPtr<const char> Parser::FALSE = kj::ArrayPtr<const char>({'f','a','l','s','e'});
 const kj::ArrayPtr<const char> Parser::TRUE = kj::ArrayPtr<const char>({'t','r','u','e'});
