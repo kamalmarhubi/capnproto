@@ -369,19 +369,6 @@ KJ_TEST("basic json decoding") {
     KJ_EXPECT(root.which() == JsonValue::NUMBER);
     KJ_EXPECT(root.getNumber() == -5.5);
   }
-
-
-
-  //KJ_EXPECT(json.encode(-5.5) == "-5.5");
-  //KJ_EXPECT(json.encode(Text::Reader("foo")) == "\"foo\"");
-  //KJ_EXPECT(json.encode(Text::Reader("ab\"cd\\ef\x03")) == "\"ab\\\"cd\\\\ef\\u0003\"");
-  //KJ_EXPECT(json.encode(test::TestEnum::CORGE) == "\"corge\"");
-
-  //byte bytes[] = {12, 34, 56};
-  //KJ_EXPECT(json.encode(Data::Reader(bytes, 3)) == "[12,34,56]");
-
-  //json.setPrettyPrint(true);
-  //KJ_EXPECT(json.encode(Data::Reader(bytes, 3)) == "[12, 34, 56]");
 }
 
 class TestHandler: public JsonCodec::Handler<Text> {
