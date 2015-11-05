@@ -184,6 +184,8 @@ KJ_TEST("encode union") {
 }
 
 KJ_TEST("basic json decoding") {
+  // TODO(cleanup): this test is a mess!
+  // TODO(soon): add expected failing cases.
   JsonCodec json;
   {
     MallocMessageBuilder message;

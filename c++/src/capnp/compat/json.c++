@@ -451,13 +451,17 @@ public:
     kj::Vector<Orphan<JsonValue::Field>> fields;
     auto orphanage = Orphanage::getForMessageContaining(output);
 
-    consumeWithSurroundingWhitespace('{');
+    consume('{');
     while (consumeWhitespace(), nextChar() != '}') {
       auto orphan = orphanage.newOrphan<JsonValue::Field>();
       auto builder = orphan.get();
 
       builder.setName(consumeQuotedString());
-      consumeWithSurroundingWhitespace(':');
+
+      consumeWhitespace();
+      consume(':');
+      consumeWhitespace();
+
       auto valueBuilder = builder.getValue();
       parseValue(valueBuilder);
 
@@ -476,7 +480,7 @@ public:
       object.adoptWithCaveats(i, kj::mv(fields[i]));
     }
 
-    consumeWithSurroundingWhitespace('}');
+    consume('}');
   }
 
   char nextChar() {
@@ -528,12 +532,6 @@ public:
         chr == '\v'
       );
     });
-  }
-
-  void consumeWithSurroundingWhitespace(char chr) {
-    consumeWhitespace();
-    consume(chr);
-    consumeWhitespace();
   }
 
   kj::String consumeQuotedString() {
