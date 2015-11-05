@@ -386,9 +386,9 @@ namespace _ {  // private
 
 class Parser {
 public:
-  Parser(kj::ArrayPtr<const char> input) : input_(input), pos_(0) {}
+  Parser(kj::ArrayPtr<const char> input) : input_(input), remaining_(input_) {}
   void parseValue(JsonValue::Builder &output) {
-    KJ_REQUIRE(pos_ < input_.size(), "JSON message ends prematurely.");
+    KJ_REQUIRE(remaining_.size() > 0, "JSON message ends prematurely.");
 
     consumeWhitespace();
 
@@ -406,12 +406,12 @@ public:
   }
 
   void parseNumber(JsonValue::Builder &output) {
-    // TODO(soon): strtod is more liberal than JSON grammar, eg allows leading +
-    // strtod consumes leading whitespace, so we don't have to.
+    // TODO(soon): strtod is more liberal than JSON grammar, eg allows leading +.
+    // NB strtod consumes leading whitespace, so we don't have to.
     char *numEnd;
-    output.setNumber(std::strtod(input_.begin() + pos_, &numEnd));
+    output.setNumber(std::strtod(remaining_.begin(), &numEnd));
 
-    advanceTo(numEnd - input_.begin());
+    advanceTo(numEnd);
   }
 
   void parseString(JsonValue::Builder &output) {
@@ -477,47 +477,40 @@ public:
   }
 
   char nextChar() {
-    return input_[pos_];
+    return remaining_.front();
   }
 
   void advance(size_t numBytes = 1) {
-    KJ_REQUIRE(pos_ + numBytes < input_.size());
-    pos_ += numBytes;
+    KJ_REQUIRE(numBytes < remaining_.size());
+    remaining_ = kj::arrayPtr(remaining_.begin() + numBytes, remaining_.end());
   }
 
-  void advanceTo(size_t newPos) {
-    KJ_REQUIRE(newPos < input_.size());
-    pos_ = newPos;
+  void advanceTo(const char *newPos) {
+    KJ_REQUIRE(remaining_.begin() <= newPos && newPos < remaining_.end());
+    remaining_ = kj::arrayPtr(newPos, remaining_.end());
   }
 
-  kj::ArrayPtr<const char> consume(char chr) {
+  void consume(char chr) {
     char current = nextChar();
     KJ_REQUIRE(current == chr, current, chr);
 
-    auto ret = input_.slice(pos_, pos_ + 1);
     advance();
-
-    return ret;
   }
 
-  kj::ArrayPtr<const char> consume(kj::ArrayPtr<const char> str) {
-    // TODO(soon): check input has enough characters left
-    auto originalPos = pos_;
+  void consume(kj::ArrayPtr<const char> str) {
+    KJ_REQUIRE(remaining_.size() >= str.size());
 
-    auto prefix = input_.slice(pos_, pos_ + str.size());
-
-    // TODO(soon): error message
+    auto prefix = remaining_.slice(0, str.size());
     KJ_REQUIRE(prefix == str, "Unexpected input in JSON message.", prefix, str);
 
     advance(str.size());
-    return input_.slice(originalPos, originalPos + str.size());
   }
 
   kj::ArrayPtr<const char> consumeWhile(kj::Function<bool(char)> predicate) {
-    auto originalPos = pos_;
+    auto originalPos = remaining_.begin();
     while (predicate(nextChar())) { advance(); }
 
-    return input_.slice(originalPos, pos_);
+    return kj::arrayPtr(originalPos, remaining_.begin());
   }
   
   void consumeWhitespace() {
@@ -553,19 +546,19 @@ public:
       decoded.addAll(stringValue);
 
       if (nextChar() == '\\') {  // handle escapes.
-        advance(1);
+        advance();
         switch(nextChar()) {
-          case '"' : decoded.add('"' ); advance(1); break;
-          case '\\': decoded.add('\\'); advance(1); break;
-          case '/' : decoded.add('/' ); advance(1); break;
-          case 'b' : decoded.add('\b'); advance(1); break;
-          case 'f' : decoded.add('\f'); advance(1); break;
-          case 'n' : decoded.add('\n'); advance(1); break;
-          case 'r' : decoded.add('\r'); advance(1); break;
-          case 't' : decoded.add('\t'); advance(1); break;
+          case '"' : decoded.add('"' ); advance(); break;
+          case '\\': decoded.add('\\'); advance(); break;
+          case '/' : decoded.add('/' ); advance(); break;
+          case 'b' : decoded.add('\b'); advance(); break;
+          case 'f' : decoded.add('\f'); advance(); break;
+          case 'n' : decoded.add('\n'); advance(); break;
+          case 'r' : decoded.add('\r'); advance(); break;
+          case 't' : decoded.add('\t'); advance(); break;
           case 'u' :
-            advance(1);  // consume 'u'
-            unescapeAndAppend(kj::arrayPtr(input_.begin() + pos_, 4), decoded);
+            advance();  // consume 'u'
+            unescapeAndAppend(kj::arrayPtr(remaining_.begin(), 4), decoded);
             advance(4);
             break;
           default: KJ_FAIL_REQUIRE("invalid escape", nextChar()); break;
@@ -610,8 +603,8 @@ private:
   static const kj::ArrayPtr<const char> FALSE;
   static const kj::ArrayPtr<const char> TRUE;
 
-  kj::ArrayPtr<const char> input_;
-  size_t pos_;
+  const kj::ArrayPtr<const char> input_;
+  kj::ArrayPtr<const char> remaining_;
 
 };  // class Parser
 
