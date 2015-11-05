@@ -62,6 +62,7 @@ public:
       case '"': parseString(output); break;
       case '[': parseArray(output); break;
       case '{': parseObject(output); break;
+      // TODO(soon): decide if null terminator in input should be handled
       // TODO(soon): are there other possible leading characters?
       default: parseNumber(output); break;
     }
