@@ -576,7 +576,7 @@ public:
     return kj::String(decoded.releaseAsArray());
   }
 
-  // TODO(soon): This "interface" is ugly, and won't work if/when surrogates are handled.
+  // TODO(someday): This "interface" is ugly, and won't work if/when surrogates are handled.
   void unescapeAndAppend(kj::ArrayPtr<const char> hex, kj::Vector<char>& target) {
     KJ_REQUIRE(hex.size() == 4);
     int codePoint = 0;
@@ -596,7 +596,7 @@ public:
       }
     }
 
-    // TODO(soon): support at least basic multi-lingual plane, ie ignore surrogates.
+    // TODO(soon): Support at least basic multi-lingual plane, ie ignore surrogates.
     KJ_REQUIRE(codePoint < 128, "non-ASCII unicode escapes are not supported (yet!)");
     target.add(0x7f & static_cast<char>(codePoint));
   }
