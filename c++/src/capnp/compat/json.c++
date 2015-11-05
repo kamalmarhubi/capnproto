@@ -399,15 +399,15 @@ public:
       case '"': parseString(output); break;
       case '[': parseArray(output); break;
       case '{': parseObject(output); break;
-      // TODO(soon): decide if null terminator in input should be handled
-      // TODO(soon): are there other possible leading characters?
+      // TODO(security): We could check for numbers more carefully instead of
+      // relying on strtod.
       default: parseNumber(output); break;
     }
   }
 
   void parseNumber(JsonValue::Builder &output) {
-    // TODO(soon): strtod is more liberal than JSON grammar, eg allows leading +.
-    // NB strtod consumes leading whitespace, so we don't have to.
+    // TODO(someday): strtod allows leading +, while JSON grammar does not.
+    // strtod consumes leading whitespace, so we don't have to.
     char *numEnd;
     output.setNumber(std::strtod(remaining_.begin(), &numEnd));
 
@@ -419,10 +419,12 @@ public:
   }
 
   void parseArray(JsonValue::Builder &output) {
+    // TODO(perf): Using orphans leaves holes in the message. It's expected
+    // that a JsonValue is used for interop, and won't be sent or written as a
+    // Cap'n Proto message.
     kj::Vector<Orphan<JsonValue>> values;
     auto orphanage = Orphanage::getForMessageContaining(output);
 
-    // TODO(soon): this should be cleaned up
     consume('[');
     while (consumeWhitespace(), nextChar() != ']') {
       auto orphan = orphanage.newOrphan<JsonValue>();
@@ -431,6 +433,7 @@ public:
       values.add(kj::mv(orphan));
 
       if (consumeWhitespace(), nextChar() != ']') {
+        // TODO(soon): This incorrectly allows a trailing comma.
         consume(',');
       }
     }
@@ -462,6 +465,7 @@ public:
       fields.add(kj::mv(orphan));
 
       if (consumeWhitespace(), nextChar() != '}') {
+        // TODO(soon): This incorrectly allows a trailing comma.
         consume(',');
       }
     }
@@ -534,8 +538,8 @@ public:
 
   kj::String consumeQuotedString() {
     consume('"');
-    // TODO(perf): avoid copy / alloc if no escapes encoutered.
-    // TODO(perf): get statistics on string size and preallocate?
+    // TODO(perf): Avoid copy / alloc if no escapes encoutered.
+    // TODO(perf): Get statistics on string size and preallocate?
     kj::Vector<char> decoded;
 
     do {
@@ -570,11 +574,11 @@ public:
     consume('"');
     decoded.add('\0');
 
-    // TODO(perf): this copy can be eliminated, but I can't find the kj::wayToDoIt();
+    // TODO(perf): This copy can be eliminated, but I can't find the kj::wayToDoIt();
     return kj::String(decoded.releaseAsArray());
   }
 
-  // TODO(soon): this "interface" is ugly, and won't work if/when surrogates are handled.
+  // TODO(soon): This "interface" is ugly, and won't work if/when surrogates are handled.
   void unescapeAndAppend(kj::ArrayPtr<const char> hex, kj::Vector<char>& target) {
     KJ_REQUIRE(hex.size() == 4);
     int codePoint = 0;
