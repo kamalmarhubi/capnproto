@@ -388,16 +388,15 @@ class Parser {
 public:
   Parser(kj::ArrayPtr<const char> input) : input_(input), remaining_(input_) {}
   void parseValue(JsonValue::Builder &output) {
+    consumeWhitespace();
     KJ_REQUIRE(remaining_.size() > 0, "JSON message ends prematurely.");
 
-    consumeWhitespace();
-
     switch (nextChar()) {
-      case 'n': consume(NULL_); output.setNull(); break;
+      case 'n': consume(NULL_); output.setNull();         break;
       case 'f': consume(FALSE); output.setBoolean(false); break;
-      case 't': consume(TRUE); output.setBoolean(true); break;
+      case 't': consume(TRUE);  output.setBoolean(true);  break;
       case '"': parseString(output); break;
-      case '[': parseArray(output); break;
+      case '[': parseArray(output);  break;
       case '{': parseObject(output); break;
       // TODO(security): We could check for numbers more carefully instead of
       // relying on strtod.
@@ -485,29 +484,30 @@ public:
   }
 
   void advance(size_t numBytes = 1) {
-    KJ_REQUIRE(numBytes < remaining_.size());
+    KJ_REQUIRE(numBytes < remaining_.size(), "JSON message ends prematurely.");
     remaining_ = kj::arrayPtr(remaining_.begin() + numBytes, remaining_.end());
   }
 
   void advanceTo(const char *newPos) {
-    KJ_REQUIRE(remaining_.begin() <= newPos && newPos < remaining_.end());
+    KJ_REQUIRE(remaining_.begin() <= newPos && newPos < remaining_.end(),
+        "JSON message ends prematurely.");
     remaining_ = kj::arrayPtr(newPos, remaining_.end());
   }
 
-  void consume(char chr) {
+  void consume(char expected) {
     char current = nextChar();
-    KJ_REQUIRE(current == chr, current, chr);
+    KJ_REQUIRE(current == expected, "Unexpected character in JSON message.");
 
     advance();
   }
 
-  void consume(kj::ArrayPtr<const char> str) {
-    KJ_REQUIRE(remaining_.size() >= str.size());
+  void consume(kj::ArrayPtr<const char> expected) {
+    KJ_REQUIRE(remaining_.size() >= expected.size());
 
-    auto prefix = remaining_.slice(0, str.size());
-    KJ_REQUIRE(prefix == str, "Unexpected input in JSON message.", prefix, str);
+    auto prefix = remaining_.slice(0, expected.size());
+    KJ_REQUIRE(prefix == expected, "Unexpected input in JSON message.");
 
-    advance(str.size());
+    advance(expected.size());
   }
 
   kj::ArrayPtr<const char> consumeWhile(kj::Function<bool(char)> predicate) {
@@ -598,6 +598,7 @@ public:
       }
     }
 
+    // TODO(soon): support at least basic multi-lingual plane, ie ignore surrogates.
     KJ_REQUIRE(codePoint < 128, "non-ASCII unicode escapes are not supported (yet!)");
     target.add(0x7f & static_cast<char>(codePoint));
   }
@@ -612,13 +613,14 @@ private:
 
 };  // class Parser
 
-// Array literal needed to avoid null terminator.
+// Array literal used instead of string literal to avoid null terminator.
 const kj::ArrayPtr<const char> Parser::NULL_ = kj::ArrayPtr<const char>({'n','u','l','l'});
 const kj::ArrayPtr<const char> Parser::FALSE = kj::ArrayPtr<const char>({'f','a','l','s','e'});
 const kj::ArrayPtr<const char> Parser::TRUE = kj::ArrayPtr<const char>({'t','r','u','e'});
 
 
 void parseJsonValue(kj::ArrayPtr<const char> input, JsonValue::Builder output) {
+  // TODO(security): should we check there are no non-whitespace characters left in input?
   Parser parser(input);
   parser.parseValue(output);
 }
