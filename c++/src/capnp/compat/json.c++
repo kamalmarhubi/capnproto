@@ -410,6 +410,10 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
               break;
           }
           break;
+        case schema::Type::TEXT:
+          KJ_REQUIRE(value.which() == JsonValue::STRING);
+          output.set(*structField, value.getString());
+          break;
 
         default:
           KJ_FAIL_REQUIRE("not handled yet", which);
