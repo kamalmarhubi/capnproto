@@ -378,10 +378,14 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
     KJ_IF_MAYBE(structField, schema.findFieldByName(name)) {
       auto value = field.getValue();
       switch (structField->getType().which()) {
+      case schema::Type::VOID:
+        KJ_REQUIRE(value.which() == JsonValue::NULL_);
+        break;
       case schema::Type::BOOL:
         KJ_REQUIRE(value.which() == JsonValue::BOOLEAN);
         output.set(*structField, field.getValue().getBoolean());
         break;
+
       default: KJ_FAIL_REQUIRE("not handled yet");
       }
     }

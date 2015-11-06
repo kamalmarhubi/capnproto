@@ -477,7 +477,7 @@ KJ_TEST("decode all types") {
   auto expectedRoot = expected.initRoot<TestAllTypes>();
   expectedRoot.setBoolField(true);
 
-  auto testJson = kj::str(R"({"boolField": true})");
+  auto testJson = kj::str(R"({"voidField": null, "boolField": true})");
 
   auto parsedRoot = parsed.initRoot<TestAllTypes>();
   json.decode(testJson, parsedRoot);
