@@ -387,6 +387,28 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
         KJ_REQUIRE(value.which() == JsonValue::BOOLEAN);
         output.set(*structField, field.getValue().getBoolean());
         break;
+      case schema::Type::INT8:
+      case schema::Type::INT16:
+      case schema::Type::INT32:
+      case schema::Type::INT64:
+      case schema::Type::UINT8:
+      case schema::Type::UINT16:
+      case schema::Type::UINT32:
+      case schema::Type::UINT64:
+      case schema::Type::FLOAT32:
+      case schema::Type::FLOAT64:
+        switch (value.which()) {
+        case JsonValue::NUMBER:
+          // TODO(soon): should check it's in range
+          output.set(*structField, field.getValue().getNumber());
+          break;
+        case JsonValue::STRING:
+          KJ_FAIL_ASSERT("numeric strings not handled yet");
+        default:
+          KJ_FAIL_REQUIRE("numeric field must be encoded as number or string");
+          break;
+        }
+        break;
 
       default:
         KJ_FAIL_REQUIRE("not handled yet", which);
