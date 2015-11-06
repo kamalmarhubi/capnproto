@@ -476,8 +476,14 @@ KJ_TEST("decode all types") {
 
   auto expectedRoot = expected.initRoot<TestAllTypes>();
   expectedRoot.setBoolField(true);
+  expectedRoot.setInt8Field(2);
+  expectedRoot.setFloat32Field(107.3);
 
-  auto testJson = kj::str(R"({"voidField": null, "boolField": true, "int8Field": 0})");
+  auto testJson = kj::str(R"({
+    "voidField": null,
+    "boolField": true,
+    "int8Field": 2,
+    "float32Field": 107.3})");
 
   auto parsedRoot = parsed.initRoot<TestAllTypes>();
   json.decode(testJson, parsedRoot);

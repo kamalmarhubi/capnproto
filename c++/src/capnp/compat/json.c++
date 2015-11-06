@@ -400,7 +400,7 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
         case schema::Type::FLOAT64:
           switch (value.which()) {
             case JsonValue::NUMBER:
-              // TODO(soon): should check it's in range
+              // TODO(soon): should check it's in range for target type
               output.set(*structField, value.getNumber());
               break;
             case JsonValue::STRING:
