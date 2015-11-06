@@ -470,6 +470,28 @@ KJ_TEST("maximum nesting depth") {
   }
 }
 
+KJ_TEST("decode all types") {
+  JsonCodec json;
+  MallocMessageBuilder parsed, expected;
+
+  auto expectedRoot = expected.initRoot<TestAllTypes>();
+  expectedRoot.setBoolField(true);
+
+  auto testJson = kj::str(R"({"boolField": true})");
+
+  auto parsedRoot = parsed.initRoot<TestAllTypes>();
+  json.decode(testJson, parsedRoot);
+
+  KJ_EXPECT(parsedRoot.toString().flatten() == expectedRoot.toString().flatten(), parsedRoot, expectedRoot);
+//    "{ \"voidField\": null,\n"
+//    "  \"boolField\": true,\n"
+//    "  \"int8Field\": -123,\n"
+//    "  \"int16Field\": -12345,\n"
+//    "  \"int32Field\": -12345678,\n"
+//    "  \"int64Field\": \"-123456789012345\",\n"
+
+}
+
 class TestHandler: public JsonCodec::Handler<Text> {
 public:
   void encode(const JsonCodec& codec, Text::Reader input,
