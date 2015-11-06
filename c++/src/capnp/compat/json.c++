@@ -379,40 +379,41 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
     KJ_IF_MAYBE(structField, schema.findFieldByName(name)) {
       auto value = field.getValue();
       auto which = structField->getType().which();
-      switch (which) {
-      case schema::Type::VOID:
-        KJ_REQUIRE(value.which() == JsonValue::NULL_);
-        break;
-      case schema::Type::BOOL:
-        KJ_REQUIRE(value.which() == JsonValue::BOOLEAN);
-        output.set(*structField, field.getValue().getBoolean());
-        break;
-      case schema::Type::INT8:
-      case schema::Type::INT16:
-      case schema::Type::INT32:
-      case schema::Type::INT64:
-      case schema::Type::UINT8:
-      case schema::Type::UINT16:
-      case schema::Type::UINT32:
-      case schema::Type::UINT64:
-      case schema::Type::FLOAT32:
-      case schema::Type::FLOAT64:
-        switch (value.which()) {
-        case JsonValue::NUMBER:
-          // TODO(soon): should check it's in range
-          output.set(*structField, field.getValue().getNumber());
-          break;
-        case JsonValue::STRING:
-          KJ_FAIL_ASSERT("numeric strings not handled yet");
-        default:
-          KJ_FAIL_REQUIRE("numeric field must be encoded as number or string");
-          break;
-        }
-        break;
 
-      default:
-        KJ_FAIL_REQUIRE("not handled yet", which);
-        break;
+      switch (which) {
+        case schema::Type::VOID:
+          KJ_REQUIRE(value.which() == JsonValue::NULL_);
+          break;
+        case schema::Type::BOOL:
+          KJ_REQUIRE(value.which() == JsonValue::BOOLEAN);
+          output.set(*structField, value.getBoolean());
+          break;
+        case schema::Type::INT8:
+        case schema::Type::INT16:
+        case schema::Type::INT32:
+        case schema::Type::INT64:
+        case schema::Type::UINT8:
+        case schema::Type::UINT16:
+        case schema::Type::UINT32:
+        case schema::Type::UINT64:
+        case schema::Type::FLOAT32:
+        case schema::Type::FLOAT64:
+          switch (value.which()) {
+            case JsonValue::NUMBER:
+              // TODO(soon): should check it's in range
+              output.set(*structField, value.getNumber());
+              break;
+            case JsonValue::STRING:
+              KJ_FAIL_ASSERT("numeric strings not handled yet");
+            default:
+              KJ_FAIL_REQUIRE("numeric field must be encoded as number or string");
+              break;
+          }
+          break;
+
+        default:
+          KJ_FAIL_REQUIRE("not handled yet", which);
+          break;
       }
     }
   }
