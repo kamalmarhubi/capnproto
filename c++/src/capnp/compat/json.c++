@@ -373,6 +373,7 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
   auto schema = output.getSchema();
 
   for (auto field : input.getObject()) {
+    // TODO(soon): field and type handlers
     auto name = field.getName();
 
     KJ_IF_MAYBE(structField, schema.findFieldByName(name)) {
