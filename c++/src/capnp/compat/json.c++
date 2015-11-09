@@ -379,6 +379,7 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
     KJ_IF_MAYBE(structField, schema.findFieldByName(name)) {
       auto value = field.getValue();
       auto which = structField->getType().which();
+      kj::Vector<const byte> bytes;  // required for Data fields
 
       switch (which) {
         case schema::Type::VOID:
@@ -413,6 +414,18 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
         case schema::Type::TEXT:
           KJ_REQUIRE(value.which() == JsonValue::STRING);
           output.set(*structField, value.getString());
+          break;
+        case schema::Type::DATA:
+          KJ_REQUIRE(value.which() == JsonValue::ARRAY);
+          for (auto b: value.getArray()) {
+            KJ_REQUIRE(b.which() == JsonValue::NUMBER);
+            auto n = b.getNumber();
+            KJ_REQUIRE(0 <= n && n < 256);
+
+            bytes.add(n);
+          }
+
+          output.set(*structField, Data::Reader(bytes));
           break;
 
         default:

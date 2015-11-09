@@ -479,13 +479,17 @@ KJ_TEST("decode all types") {
   expectedRoot.setInt8Field(2);
   expectedRoot.setFloat32Field(107.3);
   expectedRoot.setTextField("abz\\\"z");
+  
+  byte bytes[] = {12, 34, 56};
+  expectedRoot.setDataField(Data::Reader(bytes, 3));
 
   auto testJson = kj::str(R"({
     "voidField": null,
     "boolField": true,
     "int8Field": 2,
     "float32Field": 107.3,
-    "textField": "abz\\\"z"})");
+    "textField": "abz\\\"z",
+    "dataField": [12, 34, 56]})");
 
   auto parsedRoot = parsed.initRoot<TestAllTypes>();
   json.decode(testJson, parsedRoot);
