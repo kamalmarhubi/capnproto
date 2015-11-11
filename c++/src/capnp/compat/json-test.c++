@@ -253,7 +253,7 @@ KJ_TEST("basic json decoding") {
     auto root = message.initRoot<JsonValue>();
 
     json.decodeRaw("[]", root);
-    KJ_EXPECT(root.which() == JsonValue::ARRAY, root.which());
+    KJ_EXPECT(root.which() == JsonValue::ARRAY) //, root.which());
     KJ_EXPECT(root.getArray().size() == 0);
   }
 
@@ -290,7 +290,7 @@ KJ_TEST("basic json decoding") {
     auto root = message.initRoot<JsonValue>();
 
     json.decodeRaw("{}", root);
-    KJ_EXPECT(root.which() == JsonValue::OBJECT, root.which());
+    KJ_EXPECT(root.which() == JsonValue::OBJECT); //, root.which());
     KJ_EXPECT(root.getObject().size() == 0);
   }
 
@@ -299,7 +299,7 @@ KJ_TEST("basic json decoding") {
     auto root = message.initRoot<JsonValue>();
 
     json.decodeRaw(R"({"some": null})", root);
-    KJ_EXPECT(root.which() == JsonValue::OBJECT, root.which());
+    KJ_EXPECT(root.which() == JsonValue::OBJECT);//, root.which());
     auto object = root.getObject();
     KJ_EXPECT(object.size() == 1);
     KJ_EXPECT(kj::str("some") == object[0].getName());
@@ -311,7 +311,7 @@ KJ_TEST("basic json decoding") {
     auto root = message.initRoot<JsonValue>();
 
     json.decodeRaw(R"({"foo\n\tbaz": "a val", "bar": ["a", -5.5e11,  { "z": {}}]})", root);
-    KJ_EXPECT(root.which() == JsonValue::OBJECT, root.which());
+    KJ_EXPECT(root.which() == JsonValue::OBJECT); //, root.which());
     auto object = root.getObject();
     KJ_EXPECT(object.size() == 2);
     KJ_EXPECT(kj::str("foo\n\tbaz") == object[0].getName());
@@ -474,25 +474,19 @@ KJ_TEST("decode all types") {
   JsonCodec json;
   MallocMessageBuilder parsed, expected;
 
-  auto expectedRoot = expected.initRoot<TestAllTypes>();
-  expectedRoot.setBoolField(true);
-  expectedRoot.setInt8Field(2);
-  expectedRoot.setFloat32Field(107.3);
-  expectedRoot.setTextField("abz\\\"z");
-  
-  byte bytes[] = {12, 34, 56};
-  expectedRoot.setDataField(Data::Reader(bytes, 3));
+  auto expectedRoot = expected.getRoot<TestAllTypes>();
+  initTestMessage(expectedRoot);
 
-  auto testJson = kj::str(R"({
-    "voidField": null,
-    "boolField": true,
-    "int8Field": 2,
-    "float32Field": 107.3,
-    "textField": "abz\\\"z",
-    "dataField": [12, 34, 56]})");
+//  auto testJson = kj::str(R"({
+//    "voidField": null,
+//    "boolField": true,
+//    "int8Field": 2,
+//    "float32Field": 107.3,
+//    "textField": "abz\\\"z",
+//    "dataField": [12, 34, 56]})");
 
   auto parsedRoot = parsed.initRoot<TestAllTypes>();
-  json.decode(testJson, parsedRoot);
+  json.decode(kj::arrayPtr(ALL_TYPES_JSON, sizeof(ALL_TYPES_JSON)), parsedRoot);
 
   KJ_EXPECT(parsedRoot.toString().flatten() == expectedRoot.toString().flatten(), parsedRoot, expectedRoot);
 //    "{ \"voidField\": null,\n"

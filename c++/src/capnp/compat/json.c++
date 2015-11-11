@@ -604,7 +604,7 @@ public:
     KJ_REQUIRE(remaining_.size() >= expected.size());
 
     auto prefix = remaining_.slice(0, expected.size());
-    KJ_REQUIRE(prefix == expected, "Unexpected input in JSON message.");
+    KJ_REQUIRE(prefix == expected, "Unexpected input in JSON message.", prefix, expected);
 
     advance(expected.size());
   }
