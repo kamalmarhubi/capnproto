@@ -422,7 +422,8 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
           for (auto v: value.getArray()) {
             KJ_REQUIRE(v.which() == JsonValue::NUMBER);
             auto b = v.getNumber();
-            KJ_REQUIRE(0 <= b && b < 256 && b == (byte) b, "Values in data array must be integers in [0, 255].");
+            KJ_REQUIRE(0 <= b && b < 256 && b == (byte) b,
+                "Values in data array must be integers in [0, 255].");
 
             bytes.add(b);
           }
