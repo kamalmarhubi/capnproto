@@ -20,6 +20,7 @@
 // THE SOFTWARE.
 
 #include "json.h"
+#include <algorithm>
 #include <cmath>    // for HUGEVAL to check for overflow in std::strtod
 #include <cstdlib>  // std::strtod
 #include <cerrno>   // for std::strtod errors
@@ -458,6 +459,7 @@ public:
 
     KJ_REQUIRE(!inputExhausted(), "JSON message ends prematurely.");
 
+    KJ_DBG(remaining_.slice(0, std::min(remaining_.size(), (size_t) 20)));
     switch (nextChar()) {
       case 'n': consume(kj::StringPtr("null"));  output.setNull();         break;
       case 'f': consume(kj::StringPtr("false")); output.setBoolean(false); break;
