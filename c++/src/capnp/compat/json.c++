@@ -376,6 +376,8 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
     // TODO(soon): field and type handlers
     auto name = field.getName();
 
+    // We do nothing if the field was not in our version of the schema, as the JSON could be from a
+    // newer version.
     KJ_IF_MAYBE(structField, schema.findFieldByName(name)) {
       auto value = field.getValue();
       auto which = structField->getType().which();
@@ -417,12 +419,12 @@ void JsonCodec::decode(JsonValue::Reader input, DynamicStruct::Builder output) c
           break;
         case schema::Type::DATA:
           KJ_REQUIRE(value.which() == JsonValue::ARRAY);
-          for (auto b: value.getArray()) {
-            KJ_REQUIRE(b.which() == JsonValue::NUMBER);
-            auto n = b.getNumber();
-            KJ_REQUIRE(0 <= n && n < 256 && n == (byte) n);
+          for (auto v: value.getArray()) {
+            KJ_REQUIRE(v.which() == JsonValue::NUMBER);
+            auto b = v.getNumber();
+            KJ_REQUIRE(0 <= b && b < 256 && b == (byte) b, "Values in data array must be integers in [0, 255].");
 
-            bytes.add(n);
+            bytes.add(b);
           }
           output.set(*structField, Data::Reader(bytes.asPtr()));
           break;
